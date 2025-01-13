@@ -52,6 +52,9 @@ export default {
           password: this.password,
         });
         localStorage.setItem('token', response.data.token);
+        localStorage.setItem('chat_cur_user_name',this.username);
+        localStorage.setItem('chat_cur_user_id',response.data.userId); 
+        
         this.$store.commit('setCurrentUser', this.username); 
         this.$message.success('Login successful!');
         this.$router.push('/');

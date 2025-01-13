@@ -18,7 +18,6 @@
                     <template #default="scope">
                         <el-button type="primary" @click="enterChatRoom(scope.row.id)">进入</el-button>
                         <el-button type="danger" @click="deleteChatRoom(scope.row.id)">删除</el-button>
-
                     </template>
                 </el-table-column>
             </el-table>
@@ -32,6 +31,7 @@
                     <el-button type="primary" @click="createChatRoom">确认</el-button>
                 </template>
             </el-dialog>
+            
         </el-main>
     </el-container>
 </template>
@@ -54,6 +54,7 @@ export default {
     methods: {
         logout() {
             localStorage.removeItem("token"); // Remove token
+            localStorage.removeItem("chat_cur_user");
             this.$router.push("/login"); // Redirect to login page
         },
         async fetchChatRooms() {
