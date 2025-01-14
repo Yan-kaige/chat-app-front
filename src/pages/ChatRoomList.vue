@@ -10,6 +10,8 @@
                 <el-button type="success" @click="openCreateRoomModal" class="create-room-btn">
                     创建新聊天室
                 </el-button>
+                <el-button @click="viewMsg">我的消息查看</el-button>
+
             </div>
             <el-table :data="chatRooms" style="width: 100%">
                 <el-table-column prop="name" label="聊天室名称"></el-table-column>
@@ -31,13 +33,31 @@
                     <el-button type="primary" @click="createChatRoom">确认</el-button>
                 </template>
             </el-dialog>
-            
+
+
+            <el-dialog v-model="showMsgModel" title="我的消息" width="700px">
+                <el-table :data="invitations" style="width: 100%">
+                    <el-table-column prop="senderId" label="发送人"></el-table-column>
+                    <el-table-column prop="messageText" label="消息"></el-table-column>
+                    <el-table-column prop="expiredAt" label="过期时间"></el-table-column>
+                    <el-table-column>
+                        <template #default="scope">
+                            <el-button size="small" @click="acceptInvitation(scope.row)">接受</el-button>
+                            <el-button size="small" @click="deleteInvitation(scope.row.id)" type="danger">删除</el-button>
+                        </template>
+                    </el-table-column>
+                </el-table>
+
+            </el-dialog>
+
         </el-main>
     </el-container>
 </template>
 
 <script>
 import axios from 'axios';
+import { Client } from "@stomp/stompjs";
+import { da } from 'element-plus/es/locales.mjs';
 
 export default {
     data() {
@@ -45,17 +65,49 @@ export default {
             chatRooms: [],
             showCreateRoomModal: false,
             newRoomName: '',
-            visible: false
+            visible: false,
+            showMsgModel: false, // 消息模态框
+            invitations: [],
         };
     },
     async mounted() {
         await this.fetchChatRooms();
+
+
+        this.stompClient = new Client({
+            brokerURL: "ws://localhost:8765/ws", // 你的 WebSocket URL
+            debug: (str) => console.log(str), // 调试日志
+            reconnectDelay: 5000, // 自动重连时间
+        });
+
+        // 激活客户端
+        this.stompClient.onConnect = () => {
+            console.log("Connected to WebSocket");
+
+            // 订阅特定聊天室
+            this.stompClient.subscribe(`/topic/invite/${localStorage.getItem("chat_cur_user_id")}`, (message) => {
+                this.$notify({
+                    title: "新邀请",
+                    message: message.body,
+                    type: "info",
+                    duration: 3000,
+                });
+            });
+        };
+
+        // 激活 STOMP 客户端
+        this.stompClient.activate();
     },
     methods: {
         logout() {
             localStorage.removeItem("token"); // Remove token
             localStorage.removeItem("chat_cur_user");
             this.$router.push("/login"); // Redirect to login page
+        },
+        viewMsg() {
+            this.fetchInvitations();
+            this.showMsgModel = true;
+
         },
         async fetchChatRooms() {
             try {
@@ -110,15 +162,45 @@ export default {
         enterChatRoom(roomId) {
             this.$router.push(`/chatroom/${roomId}`);
         },
+        async fetchInvitations() {
+            const res = await axios.get("/api/user/invitations", {
+                headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+            });
+            this.invitations = res.data;
+        },
+        async acceptInvitation(data) {
+            try {
+                await axios.post(`/api/invitations/${data.id}/accept`);
+                this.$message.success("邀请已接受");
+                this.fetchInvitations();
+
+                //进入到指定的聊天室
+                this.$router.push(`/chatroom/${data.chatRoomId}`);
+            } catch (error) {
+                console.error("接受邀请失败", error);
+            }
+        },
+        async deleteInvitation(messageId) {
+            try {
+                await axios.delete(`/api/invitations/${messageId}`, {
+                    headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+                });
+                this.$message.success("邀请已删除");
+                this.fetchInvitations();
+            } catch (error) {
+                console.error("删除邀请失败", error);
+            }
+        },
     },
 };
 </script>
 
 <style scoped>
 .header-title {
-  text-align: center;
-  margin: 0; /* 去掉默认 margin */
-  font-size: 50px; /* 可根据需要调整字体大小 */
+    text-align: center;
+    margin: 0;
+    /* 去掉默认 margin */
+    font-size: 50px;
+    /* 可根据需要调整字体大小 */
 }
-
 </style>
