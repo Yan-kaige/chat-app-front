@@ -130,9 +130,8 @@
 </template>
 
 <script>
-import axios from "axios";
-import { Client } from "@stomp/stompjs";
-
+import axios from "../axios";
+import stompService from '../stomp';
 
 export default {
   data() {
@@ -170,7 +169,7 @@ export default {
 
     try {
       await axios.post(`/api/chatroom/${roomId}/join`, null, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+        
       });
     } catch (error) {
       console.error("Failed to join the chat room:", error);
@@ -184,32 +183,18 @@ export default {
 
     // 获取聊天室数据
     await this.fetchChatRoomData(roomId);
-    this.stompClient = new Client({
-      brokerURL: "ws://localhost:8765/ws", // 你的 WebSocket URL
-      debug: (str) => console.log(str), // 调试日志
-      reconnectDelay: 5000, // 自动重连时间
-    });
-
-    // 激活客户端
-    this.stompClient.onConnect = () => {
-      console.log("Connected to WebSocket");
-
       // 订阅特定聊天室
-      this.stompClient.subscribe(`/topic/chatroom/${roomId}`, (message) => {
+      stompService.client.subscribe(`/topic/chatroom/${roomId}`, (message) => {
         this.fetchChatRoomData(roomId); // 刷新数据
         this.scrollToBottom(); // 数据加载后滚动到底部
       });
-    };
-
-    // 激活 STOMP 客户端
-    this.stompClient.activate();
   },
   methods: {
     // Fetch chat room data
     async fetchChatRoomData(roomId) {
       try {
         const chatRes = await axios.get(`/api/chatroom/${roomId}`, {
-          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+          
         });
 
         if (chatRes.data) {
@@ -217,7 +202,7 @@ export default {
         }
 
         const roomRes = await axios.get(`/api/chatroomMsg/${roomId}`, {
-          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+          
         });
 
 
@@ -246,7 +231,7 @@ export default {
       try {
 
         const roomRes = await axios.get(`/api/privateMsg/${roomId}/${receiverId}`, {
-          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+          
         });
 
 
@@ -274,9 +259,9 @@ export default {
     async fetchOnlineUsers(roomId) {
       try {
         const response = await axios.get(`/api/chatroom/${roomId}/online`, {
-          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+          
         });
-
+        this.onlineUsers=[];
         if (response.data) {
           response.data.forEach((item) => {
             this.onlineUsers.push({
@@ -301,8 +286,7 @@ export default {
       try {
         await axios.post(
           `/api/chatroom/${roomId}/messages`,
-          { messageText: this.newMessage },
-          { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } }
+          { messageText: this.newMessage }
         );
 
         this.newMessage = "";
@@ -323,8 +307,7 @@ export default {
       try {
         await axios.post(
           `/api/privateMsg/send/${roomId}/${this.receiverId}`,
-          { messageText: this.priNewMessage },
-          { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } }
+          { messageText: this.priNewMessage }
         );
 
         this.priNewMessage = "";
@@ -340,8 +323,7 @@ export default {
       const roomId = this.$route.params.roomId;
       axios.delete(
         `/api/chatroom/${roomId}/exit`,
-        { roomId: roomId },
-        { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } }
+        { roomId: roomId }
       );
       this.$router.push("/chatroomList");
     },
@@ -358,6 +340,7 @@ export default {
     },
     // 切换 Drawer 显示/隐藏
     toggleDrawer() {
+      this.fetchOnlineUsers(this.roomId);
       this.drawerVisible = !this.drawerVisible;
     },
     startPrivateChat(row) {
@@ -387,7 +370,7 @@ export default {
       this.fileListDrawerVisible = true;
       try {
         const response = await axios.get(`/api/file/files/${this.roomId}`, {
-          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+          
         });
         this.fileList = response.data;
       } catch (error) {
@@ -407,10 +390,7 @@ export default {
     async downloadFile(file) {
       try {
         const response = await axios.get(`/api/file/download/${file.fileId}`, {
-          responseType: "blob", // 确保返回二进制数据
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
+          responseType: "blob", 
         });
 
         // 提取后端设置的文件名
@@ -439,7 +419,7 @@ export default {
           type: "warning",
         }).then(async () => {
           await axios.delete(`/api/file/delete/${file.fileId}`, {
-            headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+            
           });
           this.$message.success("文件已成功删除！");
           // 更新文件列表
@@ -461,7 +441,7 @@ export default {
       const roomId = this.$route.params.roomId;
       try {
         const response = await axios.get(`/api/chatroom/${roomId}/invite-list`, {
-          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+          
         });
         this.availableUsers = response.data;
       } catch (error) {
@@ -480,8 +460,7 @@ export default {
       try {
         await axios.post(
           `/api/chatroom/${roomId}/invite`,
-          this.selectedUsers ,
-          { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } }
+          this.selectedUsers 
         );
         this.$message.success("邀请发送成功！");
         this.inviteDialogVisible = false;

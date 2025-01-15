@@ -1,7 +1,7 @@
 <template>
     <el-container>
         <el-header>
-            <h1 class="header-title">聊天室列表</h1>
+            <h1 class="header-title">CHAT ROOM</h1>
 
         </el-header>
         <el-main>
@@ -10,6 +10,8 @@
                 <el-button type="success" @click="openCreateRoomModal" class="create-room-btn">
                     创建新聊天室
                 </el-button>
+                <el-button @click="fetchMyChatRooms">我的聊天室</el-button>
+
                 <el-button @click="viewMsg">我的消息查看</el-button>
 
             </div>
@@ -27,7 +29,15 @@
 
             <!-- 模态框 -->
             <el-dialog v-model="showCreateRoomModal" title="创建新聊天室" width="500px">
-                <el-input v-model="newRoomName" placeholder="输入聊天室名称" clearable />
+                <el-form :model="newRoom">
+                    <el-form-item label="聊天室名称">
+                        <el-input v-model="newRoom.name"></el-input>
+                    </el-form-item>
+                    <el-form-item label="聊天室密码（可选）">
+                        <el-input type="password" v-model="newRoom.password"></el-input>
+                    </el-form-item>
+                </el-form>
+
                 <template #footer>
                     <el-button @click="showCreateRoomModal = false">取消</el-button>
                     <el-button type="primary" @click="createChatRoom">确认</el-button>
@@ -50,13 +60,33 @@
 
             </el-dialog>
 
+
+            <el-dialog title="我的聊天室" v-model="myRoomsVisible" width="50%">
+                <el-table :data="myRooms" style="width: 100%">
+                    <el-table-column prop="name" label="聊天室名称"></el-table-column>
+                    <el-table-column prop="createdAt" label="创建时间"></el-table-column>
+                    <el-table-column label="操作">
+                        <template #default="scope">
+                            <el-button type="warning" @click="showUpdatePasswordDialog(scope.row)">修改密码</el-button>
+                        </template>
+                    </el-table-column>
+                </el-table>
+            </el-dialog>
+
+            <el-dialog title="修改聊天室密码" v-model="updatePasswordVisible" width="30%">
+                <el-input v-model="newPassword" placeholder="输入新密码"></el-input>
+                <template #footer>
+                    <el-button @click="updatePasswordVisible = false">取消</el-button>
+                    <el-button type="primary" @click="updateRoomPassword">确定</el-button>
+                </template>
+            </el-dialog>
+
         </el-main>
     </el-container>
 </template>
 
 <script>
-import axios from 'axios';
-import { Client } from "@stomp/stompjs";
+import axios from "../axios";
 import { da } from 'element-plus/es/locales.mjs';
 
 export default {
@@ -64,39 +94,25 @@ export default {
         return {
             chatRooms: [],
             showCreateRoomModal: false,
-            newRoomName: '',
+            newRoom: {
+                name: '',
+                password: '',
+            },
             visible: false,
             showMsgModel: false, // 消息模态框
             invitations: [],
+            myRoomsVisible: false,  // 我的聊天室模态框
+            updatePasswordVisible: false, // 修改密码模态框
+            myRooms: [], // 我的聊天室列表
+            selectedRoom: null, // 选中的聊天室
+            newPassword: "", // 新密码
         };
     },
     async mounted() {
         await this.fetchChatRooms();
 
 
-        this.stompClient = new Client({
-            brokerURL: "ws://localhost:8765/ws", // 你的 WebSocket URL
-            debug: (str) => console.log(str), // 调试日志
-            reconnectDelay: 5000, // 自动重连时间
-        });
 
-        // 激活客户端
-        this.stompClient.onConnect = () => {
-            console.log("Connected to WebSocket");
-
-            // 订阅特定聊天室
-            this.stompClient.subscribe(`/topic/invite/${localStorage.getItem("chat_cur_user_id")}`, (message) => {
-                this.$notify({
-                    title: "新邀请",
-                    message: message.body,
-                    type: "info",
-                    duration: 3000,
-                });
-            });
-        };
-
-        // 激活 STOMP 客户端
-        this.stompClient.activate();
     },
     methods: {
         logout() {
@@ -112,7 +128,7 @@ export default {
         async fetchChatRooms() {
             try {
                 const response = await axios.get('/api/chatroom', {
-                    headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+
                 });
                 this.chatRooms = response.data;
             } catch (error) {
@@ -126,18 +142,21 @@ export default {
         },
         closeCreateRoomModal() {
             this.showCreateRoomModal = false;
-            this.newRoomName = '';
+            this.newRoom = {
+                name: '',
+                password: '',
+            };
         },
         async createChatRoom() {
-            if (!this.newRoomName) {
+            if (!this.newRoom.name) {
                 this.$message.error('Please enter a chat room name!');
                 return;
             }
             try {
                 await axios.post(
                     '/api/chatroom/create',
-                    { name: this.newRoomName },
-                    { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }
+                    this.newRoom,
+
                 );
                 this.$message.success('Chat room created successfully!');
                 this.closeCreateRoomModal();
@@ -150,7 +169,7 @@ export default {
         async deleteChatRoom(roomId) {
             try {
                 await axios.delete(`/api/chatroom/${roomId}`, {
-                    headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+
                 });
                 alert('Chat room deleted successfully!');
                 await this.fetchChatRooms(); // 更新聊天室列表
@@ -159,13 +178,39 @@ export default {
                 console.error(error);
             }
         },
-        enterChatRoom(roomId) {
-            this.$router.push(`/chatroom/${roomId}`);
+        async enterChatRoom(roomId) {
+
+            const room = this.chatRooms.find(r => r.id === roomId);
+
+            //自己创建的聊天室直接进入
+            if (room.createdBy == localStorage.getItem("chat_cur_user_id")) {
+                this.$router.push(`/chatroom/${roomId}`);
+                return;
+            }
+
+            if (room.password) {
+                const password = await this.$prompt('请输入聊天室密码', '密码验证', {
+                    inputType: 'password',
+                }).catch(() => null);
+
+                if (!password) return;
+
+                const response = await axios.post(`/api/chatroom/${roomId}/join`, null, {
+                    params: { password: password.value },
+                });
+
+                if (response.data != 'Password is incorrect') {
+                    this.$router.push(`/chatroom/${roomId}`);
+                } else {
+                    this.$message.error('密码错误');
+                }
+            } else {
+                await axios.post(`/api/chatroom/${roomId}/join`);
+                this.$router.push(`/chatroom/${roomId}`);
+            }
         },
         async fetchInvitations() {
-            const res = await axios.get("/api/user/invitations", {
-                headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-            });
+            const res = await axios.get("/api/user/invitations");
             this.invitations = res.data;
         },
         async acceptInvitation(data) {
@@ -182,15 +227,42 @@ export default {
         },
         async deleteInvitation(messageId) {
             try {
-                await axios.delete(`/api/invitations/${messageId}`, {
-                    headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-                });
+                await axios.delete(`/api/invitations/${messageId}`);
                 this.$message.success("邀请已删除");
                 this.fetchInvitations();
             } catch (error) {
                 console.error("删除邀请失败", error);
             }
         },
+        async fetchMyChatRooms() {
+            try {
+                const response = await axios.get(`/api/chatroom/my`, );
+                this.myRooms = response.data;
+                this.myRoomsVisible = true;
+            } catch (error) {
+                console.error("Failed to fetch my chat rooms:", error);
+            }
+        },
+        showUpdatePasswordDialog(room) {
+            this.selectedRoom = room;
+            this.newPassword = "";
+            this.updatePasswordVisible = true;
+        },
+        async updateRoomPassword() {
+            try {
+                await axios.post(`/api/chatroom/${this.selectedRoom.id}/update-password`, null, {
+                    params: {
+                        newPassword: this.newPassword,
+                    },
+                });
+                this.updatePasswordVisible = false;
+                this.$message.success("密码更新成功！");
+            } catch (error) {
+                console.error("Failed to update room password:", error);
+                this.$message.error("更新密码失败！");
+            }
+        },
+
     },
 };
 </script>
