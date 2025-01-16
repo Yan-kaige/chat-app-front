@@ -21,7 +21,7 @@
                 <el-table-column label="操作">
                     <template #default="scope">
                         <el-button type="primary" @click="enterChatRoom(scope.row.id)">进入</el-button>
-                        <el-button type="danger" @click="deleteChatRoom(scope.row.id)">删除</el-button>
+ 
                     </template>
                 </el-table-column>
             </el-table>
@@ -68,6 +68,7 @@
                     <el-table-column label="操作">
                         <template #default="scope">
                             <el-button type="warning" @click="showUpdatePasswordDialog(scope.row)">修改密码</el-button>
+                            <el-button type="danger" @click="deleteChatRoom(scope.row.id)">删除聊天室</el-button>
                         </template>
                     </el-table-column>
                 </el-table>
@@ -87,7 +88,7 @@
 
 <script>
 import axios from "../axios";
-import { da } from 'element-plus/es/locales.mjs';
+import { ca, da } from 'element-plus/es/locales.mjs';
 
 export default {
     data() {
@@ -167,16 +168,26 @@ export default {
             }
         },
         async deleteChatRoom(roomId) {
-            try {
-                await axios.delete(`/api/chatroom/${roomId}`, {
+            // Confirm dialog
+            this.$confirm('确认删除吗?', 'Warning', {
+                confirmButtonText: 'Yes',
+                cancelButtonText: 'No',
+                type: 'warning',
+            }).then(async() => {
+                try {
+                    await axios.delete(`/api/chatroom/${roomId}`);
+                    await this.fetchChatRooms(); // 更新聊天室列表
+                    await this.fetchMyChatRooms();
+                    this.$message.success('Chat room deleted successfully!');
+                }
+                catch (error) {
+                    this.$message.error('Failed to delete chat room.');
+                    console.error(error);
+                }
+            })
 
-                });
-                alert('Chat room deleted successfully!');
-                await this.fetchChatRooms(); // 更新聊天室列表
-            } catch (error) {
-                alert('Failed to delete chat room. Please try again.');
-                console.error(error);
-            }
+            
+
         },
         async enterChatRoom(roomId) {
 

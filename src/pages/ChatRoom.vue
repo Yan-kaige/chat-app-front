@@ -165,7 +165,6 @@ export default {
       username: localStorage.getItem("chat_cur_user_name"),
       userId: localStorage.getItem("chat_cur_user_id")
     }
-    console.log("11" + this.currentUser.username);
 
     try {
       await axios.post(`/api/chatroom/${roomId}/join`, null, {
