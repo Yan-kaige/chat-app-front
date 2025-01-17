@@ -118,7 +118,8 @@ export default {
     methods: {
         logout() {
             localStorage.removeItem("token"); // Remove token
-            localStorage.removeItem("chat_cur_user");
+            localStorage.removeItem("chat_cur_user_name");
+            localStorage.removeItem("chat_cur_user_id");
             this.$router.push("/login"); // Redirect to login page
         },
         viewMsg() {
@@ -128,10 +129,8 @@ export default {
         },
         async fetchChatRooms() {
             try {
-                const response = await axios.get('/api/chatroom', {
-
-                });
-                this.chatRooms = response.data;
+                const response = await axios.get('/api/chatroom');
+                this.chatRooms = response;
             } catch (error) {
                 console.error('Failed to load chat rooms:', error);
             }
@@ -157,7 +156,6 @@ export default {
                 await axios.post(
                     '/api/chatroom/create',
                     this.newRoom,
-
                 );
                 this.$message.success('Chat room created successfully!');
                 this.closeCreateRoomModal();
@@ -206,15 +204,13 @@ export default {
 
                 if (!password) return;
 
-                const response = await axios.post(`/api/chatroom/${roomId}/join`, null, {
+                await axios.post(`/api/chatroom/${roomId}/join`, null, {
                     params: { password: password.value },
                 });
 
-                if (response.data != 'Password is incorrect') {
-                    this.$router.push(`/chatroom/${roomId}`);
-                } else {
-                    this.$message.error('密码错误');
-                }
+               
+                this.$router.push(`/chatroom/${roomId}`);
+
             } else {
                 await axios.post(`/api/chatroom/${roomId}/join`);
                 this.$router.push(`/chatroom/${roomId}`);
@@ -222,7 +218,7 @@ export default {
         },
         async fetchInvitations() {
             const res = await axios.get("/api/user/invitations");
-            this.invitations = res.data;
+            this.invitations = res;
         },
         async acceptInvitation(data) {
             try {
@@ -248,7 +244,7 @@ export default {
         async fetchMyChatRooms() {
             try {
                 const response = await axios.get(`/api/chatroom/my`, );
-                this.myRooms = response.data;
+                this.myRooms = response;
                 this.myRoomsVisible = true;
             } catch (error) {
                 console.error("Failed to fetch my chat rooms:", error);

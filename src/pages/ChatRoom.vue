@@ -196,8 +196,8 @@ export default {
           
         });
 
-        if (chatRes.data) {
-          this.chatRoomName = chatRes.data.name;
+        if (chatRes) {
+          this.chatRoomName = chatRes.name;
         }
 
         const roomRes = await axios.get(`/api/chatroomMsg/${roomId}`, {
@@ -208,14 +208,14 @@ export default {
         // response.data如果不为空
         this.messages = [];
 
-        if (roomRes.data) {
+        if (roomRes) {
           //循环遍历
-          for (let i = 0; i < roomRes.data.length; i++) {
+          for (let i = 0; i < roomRes.length; i++) {
             this.messages.push({
-              id: roomRes.data[i].messageId,
-              username: roomRes.data[i].user.username,
-              text: roomRes.data[i].messageText,
-              createdAt: roomRes.data[i].createdAt
+              id: roomRes[i].messageId,
+              username: roomRes[i].user.username,
+              text: roomRes[i].messageText,
+              createdAt: roomRes[i].createdAt
             });
           }
         }
@@ -237,14 +237,14 @@ export default {
         // response.data如果不为空
         this.priMessages = [];
 
-        if (roomRes.data) {
+        if (roomRes) {
           //循环遍历
-          for (let i = 0; i < roomRes.data.length; i++) {
+          for (let i = 0; i < roomRes.length; i++) {
             this.priMessages.push({
-              id: roomRes.data[i].id,
-              username: roomRes.data[i].sender.username,
-              text: roomRes.data[i].messageText,
-              createdAt: roomRes.data[i].createdAt
+              id: roomRes[i].id,
+              username: roomRes[i].sender.username,
+              text: roomRes[i].messageText,
+              createdAt: roomRes[i].createdAt
             });
           }
         }
@@ -261,8 +261,8 @@ export default {
           
         });
         this.onlineUsers=[];
-        if (response.data) {
-          response.data.forEach((item) => {
+        if (response) {
+          response.forEach((item) => {
             this.onlineUsers.push({
               username: item.user.username,
               userId: item.user.id
@@ -371,7 +371,7 @@ export default {
         const response = await axios.get(`/api/file/files/${this.roomId}`, {
           
         });
-        this.fileList = response.data;
+        this.fileList = response;
       } catch (error) {
         console.error("Failed to fetch file list:", error);
       }
@@ -442,7 +442,7 @@ export default {
         const response = await axios.get(`/api/chatroom/${roomId}/invite-list`, {
           
         });
-        this.availableUsers = response.data;
+        this.availableUsers = response;
       } catch (error) {
         console.error("Failed to fetch available users:", error);
       }

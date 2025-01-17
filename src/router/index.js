@@ -1,7 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import Login from '../pages/Login.vue';
 import ChatRoom from '../pages/ChatRoom.vue';
-import axios from 'axios'; // 引入 axios 用于调用后端
+import axios from '../axios'; // 引入 axios 用于调用后端
 
 import ChatRoomList from '../pages/ChatRoomList.vue';
 
@@ -19,7 +19,7 @@ async function checkToken(token) {
     const response = await axios.post('/api/token/validate', {}, {
       headers: { Authorization: `Bearer ${token}` },
     });
-    return response.data.valid; // 假设后端返回 { valid: true/false }
+    return response.valid; // 假设后端返回 { valid: true/false }
   } catch (error) {
     console.error('Token validation failed:', error);
     return false;

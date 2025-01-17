@@ -86,7 +86,7 @@
 </template>
 
 <script>
-import axios from "axios";
+import axios from "../axios";
 
 export default {
   mounted() {
@@ -147,7 +147,10 @@ export default {
         this.$refs.loginForm.validate(async (valid) => {
           if (valid) {
             const response = await axios.post("/api/login", this.loginForm);
-            localStorage.setItem("token", response.data.token);
+            localStorage.setItem("token", response.token);
+            localStorage.setItem("chat_cur_user_name", response.username);
+            localStorage.setItem("chat_cur_user_id", response.id);
+
             this.$message.success("登录成功！");
             this.$router.push("/");
           }
@@ -158,20 +161,16 @@ export default {
     },
     async sendVerificationCode() {
       try {
-        const response = await axios.post("/api/register/send-email-code", { email: this.registerForm.email });
-        if (response.status === 200) {
-          this.$message.success("验证码发送成功！");
-        }
+        await axios.post("/api/register/send-email-code", { email: this.registerForm.email });
+        this.$message.success("验证码发送成功！");
+       
       } catch (error) {
         this.$message.error("验证码发送失败！");
       }
     },
     async sendResetCode() {
       try {
-        const response = await axios.post("/api/reset-password/send-email-code", { email: this.resetForm.email });
-        if (response.status === 200) {
-          this.$message.success("验证码发送成功！");
-        }
+        await axios.post("/api/reset-password/send-email-code", { email: this.resetForm.email });
       } catch (error) {
         this.$message.error("验证码发送失败！");
       }
@@ -205,8 +204,8 @@ export default {
     async refreshCaptcha() {
       try {
         const response = await axios.get("/api/captcha/create", { responseType: "json" });
-        this.captchaImage = `data:image/png;base64,${response.data.image}`;
-        this.loginForm.captchaKey = response.data.key; // 保存验证码 key
+        this.captchaImage = `data:image/png;base64,${response.image}`;
+        this.loginForm.captchaKey = response.key; // 保存验证码 key
       } catch (error) {
         console.error("获取验证码失败", error);
       }
