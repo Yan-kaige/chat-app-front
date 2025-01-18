@@ -21,14 +21,25 @@
           <div class="message-time"><strong>{{ message.username }}:</strong>{{ message.createdAt }}</div>
           <div class="message-content">
 
+            <template v-if="message.messageType == '1'">
+              <p>{{ message.text }}</p>
+            </template>
+            <template v-if="message.messageType == '2'">
+              <!-- <el-image :src="message.mediaUrl" style="max-width: 100%; height: auto;" alt="图片消息" /> -->
+              <el-image style="width: 100px; height: 100px" :src="message.mediaUrl"  :preview-src-list="[message.mediaUrl]"/>
+            </template>
+
             <template v-if="message.messageType == '3'">
               <audio :src="message.mediaUrl" controls style="width: 200px; height: 40px;">
-                语音消息点击播放
               </audio>
-
             </template>
-            <template v-else>
-              <p>{{ message.text }}</p>
+
+            <template v-if="message.messageType == '4'">
+              <video controls :src="message.mediaUrl" style="width: 300px; height: auto;" />
+            </template>
+   
+            <template v-if="message.messageType == '5'">
+              <el-link :href="message.mediaUrl" download>文件名称：{{ message.text }}  点击下载</el-link>
             </template>
 
           </div>
@@ -40,11 +51,17 @@
         <el-button type="success" @click="openFileUpload">上传文件</el-button>
         <el-button type="primary" @click="toggleDrawer">在线用户</el-button>
         <el-button type="primary" @click="openInviteDialog">邀请用户</el-button>
+
       </div>
 
       <!-- Message Input -->
       <el-form @submit.prevent="sendMessage" inline class="message-form">
         <el-input v-model="newMessage" placeholder="输入消息......" class="message-input" clearable />
+
+        <el-upload class="upload-demo" :action="`/api/chatroom/sendMediaToRoom/${roomId}`"  :auto-upload="true" ref="upload"
+            :on-success="handleSendSuccess">
+          <el-button>发送文件</el-button>
+        </el-upload>
 
         <el-button @mousedown="startRecording(1)" @mouseup="stopRecording" @mouseleave="stopRecording"
           :disabled="isRecording === null">
@@ -72,21 +89,31 @@
 
 
 
-    <el-dialog v-model="privateDialogVisible" :title="perTitle" width="500">
+    <el-dialog v-model="privateDialogVisible" :title="perTitle" width="80%" >
 
       <el-card class="chat-messages-p" shadow="hover" v ref="priMessagesContainer">
         <div v-for="message in priMessages" :key="message.id"
           :class="['message', message.username == currentUser.username ? 'message-right' : 'message-left']">
           <div class="message-time"><strong>{{ message.username }}:</strong>{{ message.createdAt }}</div>
           <div class="message-content">
-            <template v-if="message.messageType == '3'">
-              <audio :src="message.mediaUrl" controls  style="width: 200px; height: 40px;">
-                语音消息点击播放
-              </audio>
-
-            </template>
-            <template v-else>
+            <template v-if="message.messageType == '1'">
               <p>{{ message.text }}</p>
+            </template>
+            <template v-if="message.messageType == '2'">
+              <el-image style="width: 100px; height: 100px" :src="message.mediaUrl" :preview-src-list="[message.mediaUrl]"/>
+            </template>
+
+            <template v-if="message.messageType == '3'">
+              <audio :src="message.mediaUrl" controls style="width: 200px; height: 40px;">
+              </audio>
+            </template>
+
+            <template v-if="message.messageType == '4'">
+              <video controls :src="message.mediaUrl" style="width: 300px; height: auto;" />
+            </template>
+   
+            <template v-if="message.messageType == '5'">
+              <el-link :href="message.mediaUrl" download>文件名称：{{ message.text }}  点击下载</el-link>
             </template>
           </div>
         </div>
@@ -95,6 +122,10 @@
       <el-form @submit.prevent="sendPriMessage" inline class="message-form">
 
         <el-input v-model="priNewMessage" placeholder="输入消息......" class="message-input" clearable />
+        <el-upload class="upload-demo" :action="`/api/chatroom/sendMediaToPerson/${roomId}/${receiverId}`"  :auto-upload="true" ref="upload"
+            :on-success="handleSendSuccess">
+          <el-button>发送文件</el-button>
+        </el-upload>
         <el-button @mousedown="startRecording(2)" @mouseup="stopRecording" @mouseleave="stopRecording"
           :disabled="isRecording === null">
           {{ isRecording ? '松开结束录制' : '语音消息长按' }}
@@ -594,7 +625,14 @@ export default {
         .catch(() => {
           this.clearAudio() // 用户点击取消不发送，清空录音
         })
-    }
+    },
+
+    handleSendSuccess(response) {
+      this.$message.success("文件发送成功！");
+      
+        //清空文件列表
+        this.$refs.upload.clearFiles();
+    },
 
   },
 };
@@ -693,5 +731,10 @@ export default {
 .action-buttons {
   margin: 10px 0;
   display: flex;
+}
+
+.upload-demo {
+  margin-top: 10px;
+  margin-right: 10px;
 }
 </style>
