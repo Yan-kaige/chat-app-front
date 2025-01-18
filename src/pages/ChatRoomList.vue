@@ -21,7 +21,7 @@
                 <el-table-column label="操作">
                     <template #default="scope">
                         <el-button type="primary" @click="enterChatRoom(scope.row.id)">进入</el-button>
- 
+
                     </template>
                 </el-table-column>
             </el-table>
@@ -88,8 +88,9 @@
 
 <script>
 import axios from "../axios";
-import { ca, da } from 'element-plus/es/locales.mjs';
-
+import { ca, da, he } from 'element-plus/es/locales.mjs';
+import stompService from '../stomp';
+import { ElNotification } from 'element-plus';
 export default {
     data() {
         return {
@@ -111,12 +112,45 @@ export default {
     },
     async mounted() {
         await this.fetchChatRooms();
+        // 全局订阅邀请消息示例
+        const userId = localStorage.getItem('chat_cur_user_id');
+        const token = localStorage.getItem('token');
+        stompService.client.subscribe(`/topic/invite/${userId}`, (message) => {
+            ElNotification({
+                title: '新邀请',
+                message: message.body,
+                type: 'info',
+                duration: 3000,
+            });
+        });
 
+        //订阅踢下线消息且跳转到登录页
+        stompService.client.subscribe(`/logout/${token}`, (message) => {
+            ElNotification({
+                title: '下线通知',
+                message: message.body,
+                type: 'warning',
+                duration: 3000,
+            });
+            localStorage.removeItem("token"); // Remove token
+            localStorage.removeItem("chat_cur_user_name");
+            localStorage.removeItem("chat_cur_user_id");
+
+            this.$router.push('/login');
+        });
 
 
     },
     methods: {
         logout() {
+
+            //发送logout请求
+            axios.get("/api/logout", {
+                headers: {
+                    Authorization: `Bearer ${localStorage.getItem("token")}`,
+                },
+            });
+
             localStorage.removeItem("token"); // Remove token
             localStorage.removeItem("chat_cur_user_name");
             localStorage.removeItem("chat_cur_user_id");
@@ -171,7 +205,7 @@ export default {
                 confirmButtonText: 'Yes',
                 cancelButtonText: 'No',
                 type: 'warning',
-            }).then(async() => {
+            }).then(async () => {
                 try {
                     await axios.delete(`/api/chatroom/${roomId}`);
                     await this.fetchChatRooms(); // 更新聊天室列表
@@ -184,7 +218,7 @@ export default {
                 }
             })
 
-            
+
 
         },
         async enterChatRoom(roomId) {
@@ -208,7 +242,7 @@ export default {
                     params: { password: password.value },
                 });
 
-               
+
                 this.$router.push(`/chatroom/${roomId}`);
 
             } else {
@@ -243,7 +277,7 @@ export default {
         },
         async fetchMyChatRooms() {
             try {
-                const response = await axios.get(`/api/chatroom/my`, );
+                const response = await axios.get(`/api/chatroom/my`,);
                 this.myRooms = response;
                 this.myRoomsVisible = true;
             } catch (error) {
