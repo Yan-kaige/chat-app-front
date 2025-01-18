@@ -12,6 +12,8 @@
 
     <!-- Main Content -->
     <el-main>
+
+
       <!-- Chat Messages -->
       <el-card class="chat-messages" shadow="hover" v ref="messagesContainer">
         <div v-for="message in messages" :key="message.id"
@@ -19,7 +21,16 @@
           <div class="message-time"><strong>{{ message.username }}:</strong>{{ message.createdAt }}</div>
           <div class="message-content">
 
-            <p>{{ message.text }}</p>
+            <template v-if="message.messageType == '3'">
+              <audio :src="message.mediaUrl" controls style="width: 200px; height: 40px;">
+                语音消息点击播放
+              </audio>
+
+            </template>
+            <template v-else>
+              <p>{{ message.text }}</p>
+            </template>
+
           </div>
         </div>
       </el-card>
@@ -28,12 +39,18 @@
         <el-button type="primary" @click="openFileList">查看文件列表</el-button>
         <el-button type="success" @click="openFileUpload">上传文件</el-button>
         <el-button type="primary" @click="toggleDrawer">在线用户</el-button>
-        <el-button type="primary" @click="openInviteDialog" >邀请用户</el-button>
+        <el-button type="primary" @click="openInviteDialog">邀请用户</el-button>
       </div>
 
       <!-- Message Input -->
       <el-form @submit.prevent="sendMessage" inline class="message-form">
         <el-input v-model="newMessage" placeholder="输入消息......" class="message-input" clearable />
+
+        <el-button @mousedown="startRecording(1)" @mouseup="stopRecording" @mouseleave="stopRecording"
+          :disabled="isRecording === null">
+          {{ isRecording ? '松开结束录制' : '语音消息长按' }}
+        </el-button>
+
         <el-button type="primary" @click="sendMessage">发送</el-button>
       </el-form>
     </el-main>
@@ -62,14 +79,26 @@
           :class="['message', message.username == currentUser.username ? 'message-right' : 'message-left']">
           <div class="message-time"><strong>{{ message.username }}:</strong>{{ message.createdAt }}</div>
           <div class="message-content">
+            <template v-if="message.messageType == '3'">
+              <audio :src="message.mediaUrl" controls  style="width: 200px; height: 40px;">
+                语音消息点击播放
+              </audio>
 
-            <p>{{ message.text }}</p>
+            </template>
+            <template v-else>
+              <p>{{ message.text }}</p>
+            </template>
           </div>
         </div>
       </el-card>
 
       <el-form @submit.prevent="sendPriMessage" inline class="message-form">
+
         <el-input v-model="priNewMessage" placeholder="输入消息......" class="message-input" clearable />
+        <el-button @mousedown="startRecording(2)" @mouseup="stopRecording" @mouseleave="stopRecording"
+          :disabled="isRecording === null">
+          {{ isRecording ? '松开结束录制' : '语音消息长按' }}
+        </el-button>
         <el-button type="primary" @click="sendPriMessage">发送</el-button>
       </el-form>
     </el-dialog>
@@ -78,14 +107,14 @@
 
 
     <!-- File List Drawer -->
-    <el-drawer  title="文件列表" v-model="fileListDrawerVisible" direction="rtl" size="500px">
+    <el-drawer title="文件列表" v-model="fileListDrawerVisible" direction="rtl" size="500px">
       <el-table :data="fileList" style="width: 100%">
         <el-table-column prop="fileRealName" label="文件名"></el-table-column>
         <el-table-column prop="fileSize" label="大小 (KB)"></el-table-column>
         <el-table-column prop="userId" label="上传者"></el-table-column>
         <el-table-column>
           <template #default="scope">
-            <el-button type="text" size="mini"  @click="downloadFile(scope.row)">下载</el-button>
+            <el-button type="text" size="mini" @click="downloadFile(scope.row)">下载</el-button>
             <el-button type="text" size="mini" @click="deleteFile(scope.row)">删除</el-button>
 
           </template>
@@ -111,12 +140,8 @@
       <el-form>
         <el-form-item label="选择用户">
           <el-select v-model="selectedUsers" multiple placeholder="选择需要邀请的用户" style="width: 100%;">
-            <el-option
-              v-for="user in availableUsers"
-              :key="user.id"
-              :label="user.username"
-              :value="user.id"
-            ></el-option>
+            <el-option v-for="user in availableUsers" :key="user.id" :label="user.username"
+              :value="user.id"></el-option>
           </el-select>
         </el-form-item>
       </el-form>
@@ -126,13 +151,16 @@
         <el-button type="primary" @click="sendInvitations">确认邀请</el-button>
       </span>
     </el-dialog>
+
+
+
   </el-container>
 </template>
 
 <script>
 import axios from "../axios";
 import stompService from '../stomp';
-
+import { ElMessageBox, ElMessage } from 'element-plus'
 export default {
   data() {
     return {
@@ -155,6 +183,11 @@ export default {
       inviteDialogVisible: false, // 弹框可见性
       availableUsers: [], // 可邀请的用户列表
       selectedUsers: [], // 被选中的用户ID列表
+      mediaRecorder: null,
+      audioChunks: [],
+      audioBlob: null,
+      isRecording: false,
+      stream: null,
 
     };
   },
@@ -168,7 +201,7 @@ export default {
 
     try {
       await axios.post(`/api/chatroom/${roomId}/join`, null, {
-        
+
       });
     } catch (error) {
       console.error("Failed to join the chat room:", error);
@@ -176,24 +209,24 @@ export default {
 
     await this.fetchOnlineUsers(roomId);
 
-        // 初始化加载可用用户
-        await this.fetchAvailableUsers();
+    // 初始化加载可用用户
+    await this.fetchAvailableUsers();
 
 
     // 获取聊天室数据
     await this.fetchChatRoomData(roomId);
-      // 订阅特定聊天室
-      stompService.client.subscribe(`/topic/chatroom/${roomId}`, (message) => {
-        this.fetchChatRoomData(roomId); // 刷新数据
-        this.scrollToBottom(); // 数据加载后滚动到底部
-      });
+    // 订阅特定聊天室
+    stompService.client.subscribe(`/topic/chatroom/${roomId}`, (message) => {
+      this.fetchChatRoomData(roomId); // 刷新数据
+      this.scrollToBottom(); // 数据加载后滚动到底部
+    });
   },
   methods: {
     // Fetch chat room data
     async fetchChatRoomData(roomId) {
       try {
         const chatRes = await axios.get(`/api/chatroom/${roomId}`, {
-          
+
         });
 
         if (chatRes) {
@@ -201,7 +234,7 @@ export default {
         }
 
         const roomRes = await axios.get(`/api/chatroomMsg/${roomId}`, {
-          
+
         });
 
 
@@ -215,7 +248,9 @@ export default {
               id: roomRes[i].messageId,
               username: roomRes[i].user.username,
               text: roomRes[i].messageText,
-              createdAt: roomRes[i].createdAt
+              createdAt: roomRes[i].createdAt,
+              mediaUrl: roomRes[i].mediaUrl,
+              messageType: roomRes[i].messageType
             });
           }
         }
@@ -230,7 +265,7 @@ export default {
       try {
 
         const roomRes = await axios.get(`/api/privateMsg/${roomId}/${receiverId}`, {
-          
+
         });
 
 
@@ -244,7 +279,10 @@ export default {
               id: roomRes[i].id,
               username: roomRes[i].sender.username,
               text: roomRes[i].messageText,
-              createdAt: roomRes[i].createdAt
+              createdAt: roomRes[i].createdAt,
+              mediaUrl: roomRes[i].mediaUrl,
+              messageType: roomRes[i].messageType
+
             });
           }
         }
@@ -258,9 +296,9 @@ export default {
     async fetchOnlineUsers(roomId) {
       try {
         const response = await axios.get(`/api/chatroom/${roomId}/online`, {
-          
+
         });
-        this.onlineUsers=[];
+        this.onlineUsers = [];
         if (response) {
           response.forEach((item) => {
             this.onlineUsers.push({
@@ -350,7 +388,7 @@ export default {
       this.fetchSingleChatRoomData(this.roomId, row.userId);
       var key = this.generateUniqueChannelIdentifier(this.roomId, this.currentUser.userId, row.userId);
       console.log("订阅了key:" + key);
-      this.stompClient.subscribe(`/single/${key}`, (message) => {
+      stompService.client.subscribe(`/single/${key}`, (message) => {
         this.fetchSingleChatRoomData(this.roomId, row.userId); // 刷新数据
         this.scrollToBottom(); // 数据加载后滚动到底部
       });
@@ -369,7 +407,7 @@ export default {
       this.fileListDrawerVisible = true;
       try {
         const response = await axios.get(`/api/file/files/${this.roomId}`, {
-          
+
         });
         this.fileList = response;
       } catch (error) {
@@ -389,7 +427,7 @@ export default {
     async downloadFile(file) {
       try {
         const response = await axios.get(`/api/file/download/${file.fileId}`, {
-          responseType: "blob", 
+          responseType: "blob",
         });
 
         // 提取后端设置的文件名
@@ -418,7 +456,7 @@ export default {
           type: "warning",
         }).then(async () => {
           await axios.delete(`/api/file/delete/${file.fileId}`, {
-            
+
           });
           this.$message.success("文件已成功删除！");
           // 更新文件列表
@@ -431,8 +469,8 @@ export default {
         this.$message.error("删除文件失败！");
       }
     },
-     // 打开邀请用户弹框
-     openInviteDialog() {
+    // 打开邀请用户弹框
+    openInviteDialog() {
       this.inviteDialogVisible = true;
     },
     // 获取可邀请的用户列表
@@ -440,7 +478,7 @@ export default {
       const roomId = this.$route.params.roomId;
       try {
         const response = await axios.get(`/api/chatroom/${roomId}/invite-list`, {
-          
+
         });
         this.availableUsers = response;
       } catch (error) {
@@ -459,7 +497,7 @@ export default {
       try {
         await axios.post(
           `/api/chatroom/${roomId}/invite`,
-          this.selectedUsers 
+          this.selectedUsers
         );
         this.$message.success("邀请发送成功！");
         this.inviteDialogVisible = false;
@@ -473,6 +511,90 @@ export default {
       this.inviteDialogVisible = false;
       this.selectedUsers = [];
     },
+    async startRecording(type) {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        this.stream = stream;
+        this.mediaRecorder = new MediaRecorder(stream);
+
+        this.mediaRecorder.ondataavailable = (event) => {
+          this.audioChunks.push(event.data);
+        };
+
+        this.mediaRecorder.onstop = () => {
+          this.audioBlob = new Blob(this.audioChunks, { type: "audio/webm" });
+          this.audioChunks = [];
+          this.openConfirmationDialog(type);
+        };
+
+        this.mediaRecorder.start();
+        this.isRecording = true;
+      } catch (error) {
+        console.error("无法获取麦克风权限", error);
+        this.$message.error("请检查麦克风权限！");
+      }
+    },
+    stopRecording() {
+      if (this.mediaRecorder) {
+        this.mediaRecorder.stop();
+        this.stream.getTracks().forEach(track => track.stop());  // 停止流
+        this.isRecording = false;
+      }
+    },
+    async sendAudioMessage(type) {
+      if (!this.audioBlob) return;
+
+      const formData = new FormData();
+      formData.append("file", this.audioBlob, "audio_message.webm");
+
+      try {
+
+        if (type == 1) {
+          await axios.post("/api/chatroom/sendMediaToRoom/" + this.roomId, formData, {
+            headers: {
+              "Content-Type": "multipart/form-data",
+            },
+          });
+          await this.fetchChatRoomData(this.roomId); // 刷新数据
+
+        } else {
+          await axios.post("/api/chatroom/sendMediaToPerson/" + this.roomId + "/" + this.receiverId, formData, {
+            headers: {
+              "Content-Type": "multipart/form-data",
+            },
+          });
+          await this.fetchSingleChatRoomData(this.roomId, this.receiverId); // 刷新数据
+        }
+
+
+
+      } catch (error) {
+        console.error("语音消息发送失败", error);
+        this.$message.error("语音消息发送失败！");
+      }
+
+      this.audioBlob = null;
+    },
+    clearAudio() {
+      this.audioBlob = null;
+    },
+    openConfirmationDialog(type) {
+      ElMessageBox.confirm(
+        '是否发送语音消息?',
+        '确认',
+        {
+          confirmButtonText: '确定',
+          cancelButtonText: '取消',
+          type: 'info',
+        }
+      )
+        .then(() => {
+          this.sendAudioMessage(type) // 用户点击确认发送
+        })
+        .catch(() => {
+          this.clearAudio() // 用户点击取消不发送，清空录音
+        })
+    }
 
   },
 };
@@ -489,6 +611,7 @@ export default {
 
 .chat-messages-p {
   height: 40vh;
+  /* width: 60vh; */
   /* 占据视窗高度的 90% */
   overflow-y: scroll;
   padding: 20px;

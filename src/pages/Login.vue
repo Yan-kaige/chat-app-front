@@ -149,13 +149,15 @@ export default {
             const response = await axios.post("/api/login", this.loginForm);
             localStorage.setItem("token", response.token);
             localStorage.setItem("chat_cur_user_name", response.username);
-            localStorage.setItem("chat_cur_user_id", response.id);
+            localStorage.setItem("chat_cur_user_id", response.userId);
 
             this.$message.success("登录成功！");
             this.$router.push("/");
           }
         });
       } catch (error) {
+        //刷新验证码
+        this.refreshCaptcha();
         this.$message.error("登录失败！");
       }
     },

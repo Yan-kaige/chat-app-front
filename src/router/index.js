@@ -41,13 +41,19 @@ router.beforeEach(async (to, from, next) => {
       next('/login'); // 如果没有 token，则跳转到登录页
     } else {
       // 调用后端验证 token
-      const isValid = await checkToken(token);
-      if (!isValid) {
-        localStorage.removeItem('token'); // 清除过期的 token
-        next('/login'); // 跳转到登录页
-      } else {
-        next(); // token 有效，放行
+      if(token == 'undefined' || token == 'null' || token == null){
+        next('/login'); // 如果没有 token，则跳转到登录页
+      }else{
+
+        const isValid = await checkToken(token);
+        if (!isValid) {
+          localStorage.removeItem('token'); // 清除过期的 token
+          next('/login'); // 跳转到登录页
+        } else {
+          next(); // token 有效，放行
+        }
       }
+
     }
   } else {
     next(); // 如果是登录页，直接放行
