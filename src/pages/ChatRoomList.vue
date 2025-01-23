@@ -89,7 +89,7 @@
 <script>
 import axios from "../axios";
 import { ca, da, he } from 'element-plus/es/locales.mjs';
-import stompService from '../stomp';
+// import stompService from '../stomp';
 import { ElNotification } from 'element-plus';
 export default {
     data() {
@@ -115,29 +115,29 @@ export default {
         // 全局订阅邀请消息示例
         const userId = localStorage.getItem('chat_cur_user_id');
         const token = localStorage.getItem('token');
-        stompService.client.subscribe(`/topic/invite/${userId}`, (message) => {
-            ElNotification({
-                title: '新邀请',
-                message: message.body,
-                type: 'info',
-                duration: 3000,
-            });
-        });
+        // stompService.client.subscribe(`/topic/invite/${userId}`, (message) => {
+        //     ElNotification({
+        //         title: '新邀请',
+        //         message: message.body,
+        //         type: 'info',
+        //         duration: 3000,
+        //     });
+        // });
 
         //订阅踢下线消息且跳转到登录页
-        stompService.client.subscribe(`/logout/${token}`, (message) => {
-            ElNotification({
-                title: '下线通知',
-                message: message.body,
-                type: 'warning',
-                duration: 3000,
-            });
-            localStorage.removeItem("token"); // Remove token
-            localStorage.removeItem("chat_cur_user_name");
-            localStorage.removeItem("chat_cur_user_id");
+        // stompService.client.subscribe(`/logout/${token}`, (message) => {
+        //     ElNotification({
+        //         title: '下线通知',
+        //         message: message.body,
+        //         type: 'warning',
+        //         duration: 3000,
+        //     });
+        //     localStorage.removeItem("token"); // Remove token
+        //     localStorage.removeItem("chat_cur_user_name");
+        //     localStorage.removeItem("chat_cur_user_id");
 
-            this.$router.push('/login');
-        });
+        //     this.$router.push('/login');
+        // });
 
 
     },

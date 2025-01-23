@@ -13,10 +13,12 @@
     "vite": "^6.0.5"
   },
   "dependencies": {
+    "@lukeed/uuid": "^2.0.1",
     "@stomp/stompjs": "^7.0.0",
     "axios": "^1.7.9",
     "element-plus": "^2.9.2",
     "pinia": "^2.3.0",
+    "snowflake-id": "^1.1.0",
     "sockjs-client": "^1.6.1",
     "vue-router": "^4.5.0",
     "vuex": "^4.1.0"

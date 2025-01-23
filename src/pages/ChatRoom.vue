@@ -2,7 +2,7 @@
   <el-container>
     <!-- Header -->
     <el-header>
-      <el-button type="text" icon="el-icon-arrow-left" @click="goBackToList" class="back-button">
+      <el-button type="primary" icon="el-icon-arrow-left" @click="goBackToList" class="back-button">
         返回聊天室列表 </el-button>
 
       <h2>聊天室: {{ chatRoomName }}</h2>
@@ -26,7 +26,8 @@
             </template>
             <template v-if="message.messageType == '2'">
               <!-- <el-image :src="message.mediaUrl" style="max-width: 100%; height: auto;" alt="图片消息" /> -->
-              <el-image style="width: 100px; height: 100px" :src="message.mediaUrl"  :preview-src-list="[message.mediaUrl]"/>
+              <el-image style="width: 100px; height: 100px" :src="message.mediaUrl"
+                :preview-src-list="[message.mediaUrl]" />
             </template>
 
             <template v-if="message.messageType == '3'">
@@ -37,9 +38,9 @@
             <template v-if="message.messageType == '4'">
               <video controls :src="message.mediaUrl" style="width: 300px; height: auto;" />
             </template>
-   
+
             <template v-if="message.messageType == '5'">
-              <el-link :href="message.mediaUrl" download>文件名称：{{ message.text }}  点击下载</el-link>
+              <el-link :href="message.mediaUrl" download>文件名称：{{ message.text }} 点击下载</el-link>
             </template>
 
           </div>
@@ -58,8 +59,8 @@
       <el-form @submit.prevent="sendMessage" inline class="message-form">
         <el-input v-model="newMessage" placeholder="输入消息......" class="message-input" clearable />
 
-        <el-upload class="upload-demo" :action="`/api/chatroom/sendMediaToRoom/${roomId}`"  :auto-upload="true" ref="upload"
-            :on-success="handleSendSuccess">
+        <el-upload class="upload-demo" :action="`/api/chatroom/sendMediaToRoom/${roomId}`" :auto-upload="true"
+          ref="upload" :on-success="handleSendSuccess">
           <el-button>发送文件</el-button>
         </el-upload>
 
@@ -89,7 +90,7 @@
 
 
 
-    <el-dialog v-model="privateDialogVisible" :title="perTitle" width="80%" >
+    <el-dialog v-model="privateDialogVisible" :title="perTitle" width="80%">
 
       <el-card class="chat-messages-p" shadow="hover" v ref="priMessagesContainer">
         <div v-for="message in priMessages" :key="message.id"
@@ -100,7 +101,8 @@
               <p>{{ message.text }}</p>
             </template>
             <template v-if="message.messageType == '2'">
-              <el-image style="width: 100px; height: 100px" :src="message.mediaUrl" :preview-src-list="[message.mediaUrl]"/>
+              <el-image style="width: 100px; height: 100px" :src="message.mediaUrl"
+                :preview-src-list="[message.mediaUrl]" />
             </template>
 
             <template v-if="message.messageType == '3'">
@@ -111,9 +113,9 @@
             <template v-if="message.messageType == '4'">
               <video controls :src="message.mediaUrl" style="width: 300px; height: auto;" />
             </template>
-   
+
             <template v-if="message.messageType == '5'">
-              <el-link :href="message.mediaUrl" download>文件名称：{{ message.text }}  点击下载</el-link>
+              <el-link :href="message.mediaUrl" download>文件名称：{{ message.text }} 点击下载</el-link>
             </template>
           </div>
         </div>
@@ -122,8 +124,8 @@
       <el-form @submit.prevent="sendPriMessage" inline class="message-form">
 
         <el-input v-model="priNewMessage" placeholder="输入消息......" class="message-input" clearable />
-        <el-upload class="upload-demo" :action="`/api/chatroom/sendMediaToPerson/${roomId}/${receiverId}`"  :auto-upload="true" ref="upload"
-            :on-success="handleSendSuccess">
+        <el-upload class="upload-demo" :action="`/api/chatroom/sendMediaToPerson/${roomId}/${receiverId}`"
+          :auto-upload="true" ref="upload" :on-success="handleSendSuccess">
           <el-button>发送文件</el-button>
         </el-upload>
         <el-button @mousedown="startRecording(2)" @mouseup="stopRecording" @mouseleave="stopRecording"
@@ -138,15 +140,15 @@
 
 
     <!-- File List Drawer -->
-    <el-drawer title="文件列表" v-model="fileListDrawerVisible" direction="rtl" size="500px">
+    <el-drawer title="文件列表" v-model="fileListDrawerVisible" direction="rtl" size="600px">
       <el-table :data="fileList" style="width: 100%">
         <el-table-column prop="fileRealName" label="文件名"></el-table-column>
         <el-table-column prop="fileSize" label="大小 (KB)"></el-table-column>
         <el-table-column prop="userId" label="上传者"></el-table-column>
         <el-table-column>
           <template #default="scope">
-            <el-button type="text" size="mini" @click="downloadFile(scope.row)">下载</el-button>
-            <el-button type="text" size="mini" @click="deleteFile(scope.row)">删除</el-button>
+            <el-button type="primary" size="small" @click="downloadFile(scope.row)">下载</el-button>
+            <el-button type="primary" size="small" @click="deleteFile(scope.row)">删除</el-button>
 
           </template>
         </el-table-column>
@@ -155,7 +157,8 @@
 
     <!-- File Upload Dialog -->
     <el-dialog title="上传文件" v-model="fileUploadDialogVisible">
-      <el-upload class="upload-demo" drag :action="`/api/file/upload/${roomId}`" :on-success="handleUploadSuccess">
+      <el-upload class="upload-demo" drag :action="`/api/file/upload/${roomId}`" :on-success="handleUploadSuccess"
+        :headers="uploadHeaders">
         <i class="el-icon-upload"></i>
         <div class="el-upload__text">拖拽文件到这里，或 <em>点击上传</em></div>
         <div class="el-upload__tip">支持单个文件上传</div>
@@ -190,8 +193,10 @@
 
 <script>
 import axios from "../axios";
-import stompService from '../stomp';
+// import stompService from '../stomp';
+import webSocketService from "../netty";
 import { ElMessageBox, ElMessage } from 'element-plus'
+import { th } from "element-plus/es/locales.mjs";
 export default {
   data() {
     return {
@@ -222,6 +227,15 @@ export default {
 
     };
   },
+  computed: {
+    uploadHeaders() {
+      // 从 localStorage 获取 token
+      const token = localStorage.getItem('token');
+      return {
+        Authorization: `Bearer ${token}`, // 添加 Authorization header
+      };
+    },
+  },
   async mounted() {
     const roomId = this.$route.params.roomId;
 
@@ -246,13 +260,27 @@ export default {
 
     // 获取聊天室数据
     await this.fetchChatRoomData(roomId);
-    // 订阅特定聊天室
-    stompService.client.subscribe(`/topic/chatroom/${roomId}`, (message) => {
-      this.fetchChatRoomData(roomId); // 刷新数据
-      this.scrollToBottom(); // 数据加载后滚动到底部
-    });
+
+
+    const token = localStorage.getItem('token');
+    webSocketService.sendMessage({ action: 'authenticate', token: `Bearer ${token}` })
+
+
+
+    // webSocketService.initialize('ws://127.0.0.1:8081/ws');
+
+    // 订阅当前聊天室
+    this.subscribeToRoom(this.roomId);
   },
   methods: {
+    subscribeToRoom(roomId) {
+      webSocketService.subscribeToRoom(roomId, () => {
+        this.fetchChatRoomData(roomId); // 刷新数据
+        this.fetchSingleChatRoomData(this.roomId, this.receiverId);
+        this.scrollToBottom(); // 滚动到底部
+        console.log("收到消息");
+      });
+    },
     // Fetch chat room data
     async fetchChatRoomData(roomId) {
       try {
@@ -345,26 +373,32 @@ export default {
     },
     // Send message
     async sendMessage() {
-      //判断消息不能为空
+      // 判断消息不能为空
       if (!this.newMessage) {
         this.$message.error("消息不能为空");
         return;
       }
+
       const roomId = this.$route.params.roomId;
+
       try {
-        await axios.post(
-          `/api/chatroom/${roomId}/messages`,
-          { messageText: this.newMessage }
-        );
+        // 通过 WebSocket 发送消息
+        webSocketService.sendMessage({
+          action: "message",
+          roomId: roomId, // 目标聊天室 ID
+          content: this.newMessage, // 消息内容
+          timestamp: new Date().toISOString(), // 时间戳，可选
+        });
 
-        this.newMessage = "";
-        await this.fetchChatRoomData(roomId); // 刷新数据
-
-
+        this.newMessage = ""; // 清空输入框
+        this.fetchChatRoomData(roomId); // 刷新数据
+        this.scrollToBottom(); // 数据加载后滚动到底部
       } catch (error) {
         console.error("Failed to send message:", error);
+        this.$message.error("消息发送失败，请重试！");
       }
     },
+
     async sendPriMessage() {
       //判断消息不能为空
       if (!this.priNewMessage) {
@@ -373,19 +407,30 @@ export default {
       }
       const roomId = this.$route.params.roomId;
       try {
-        await axios.post(
-          `/api/privateMsg/send/${roomId}/${this.receiverId}`,
-          { messageText: this.priNewMessage }
-        );
+        // 通过 WebSocket 发送消息
+        webSocketService.sendMessage({
+          action: "private",
+          roomId: roomId, // 目标聊天室 ID
+          content: this.priNewMessage, // 消息内容
+          receiverId: this.receiverId,
+          timestamp: new Date().toISOString(), // 时间戳，可选
+        }, this.refreshChatRoomData);
 
-        this.priNewMessage = "";
-        await this.fetchSingleChatRoomData(roomId, this.receiverId); // 刷新数据
+
 
 
       } catch (error) {
         console.error("Failed to send message:", error);
+        this.$message.error("消息发送失败，请重试！");
       }
+
     },
+    refreshChatRoomData() {
+      this.priNewMessage = ""; // 清空输入框
+      this.fetchSingleChatRoomData(this.$route.params.roomId, this.receiverId); // 刷新数据
+      this.scrollToBottom(); // 数据加载后滚动到底部
+    },
+
     // Go back to the chat room list
     goBackToList() {
       const roomId = this.$route.params.roomId;
@@ -393,6 +438,8 @@ export default {
         `/api/chatroom/${roomId}/exit`,
         { roomId: roomId }
       );
+      //取消订阅
+      webSocketService.unsubscribeFromRoom(roomId);
       this.$router.push("/chatroomList");
     },
     scrollToBottom() {
@@ -417,12 +464,7 @@ export default {
       this.perTitle = "与" + row.username + "私聊";
 
       this.fetchSingleChatRoomData(this.roomId, row.userId);
-      var key = this.generateUniqueChannelIdentifier(this.roomId, this.currentUser.userId, row.userId);
-      console.log("订阅了key:" + key);
-      stompService.client.subscribe(`/single/${key}`, (message) => {
-        this.fetchSingleChatRoomData(this.roomId, row.userId); // 刷新数据
-        this.scrollToBottom(); // 数据加载后滚动到底部
-      });
+
     },
     generateUniqueChannelIdentifier(chatRoomId, senderId, receiverId) {
       if (!senderId || !receiverId) {
@@ -457,25 +499,52 @@ export default {
     // 下载文件
     async downloadFile(file) {
       try {
-        const response = await axios.get(`/api/file/download/${file.fileId}`, {
-          responseType: "blob",
+        // 发起 GET 请求获取文件
+        const response = await fetch(`/api/file/download/${file.fileId}`, {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('token') || ''}`, // 添加 Authorization Header
+          },
         });
 
-        // 提取后端设置的文件名
-        const contentDisposition = response.headers["content-disposition"];
-        let fileName = file.fileRealName;
+        // 检查响应状态
+        if (!response.ok) {
+          throw new Error(`网络错误，状态码：${response.status}`);
+        }
 
-        // 创建一个 URL 对象用于下载文件
-        const url = window.URL.createObjectURL(new Blob([response.data]));
-        const link = document.createElement("a");
+        // 提取文件名
+        const contentDisposition = response.headers.get('content-disposition');
+        let fileName = 'downloaded_file';
+        if (contentDisposition) {
+          const fileNameMatch = contentDisposition.match(/filename="(.+)"/);
+          if (fileNameMatch && fileNameMatch[1]) {
+            fileName = decodeURIComponent(fileNameMatch[1]); // 解码文件名，处理中文或特殊字符
+          }
+        }
+
+        // 获取 Blob 数据
+        const blob = await response.blob();
+
+        // 创建 Blob 的 URL
+        const url = window.URL.createObjectURL(blob);
+
+        // 创建一个隐藏的下载链接
+        const link = document.createElement('a');
         link.href = url;
-        link.setAttribute("download", fileName); // 指定文件名
+        link.setAttribute('download', fileName); // 设置下载的文件名
         document.body.appendChild(link);
-        link.click(); // 自动触发下载
-        document.body.removeChild(link); // 移除元素
-        window.URL.revokeObjectURL(url); // 释放 URL 对象
+
+        // 触发下载
+        link.click();
+
+        // 清理工作
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url); // 释放内存
+
+        console.log('文件下载成功:', fileName);
       } catch (error) {
-        console.error("Failed to download file:", error);
+        console.error('文件下载失败:', error);
+        alert('下载失败，请稍后重试'); // 提示用户
       }
     },
     async deleteFile(file) {
@@ -629,9 +698,9 @@ export default {
 
     handleSendSuccess(response) {
       this.$message.success("文件发送成功！");
-      
-        //清空文件列表
-        this.$refs.upload.clearFiles();
+
+      //清空文件列表
+      this.$refs.upload.clearFiles();
     },
 
   },
