@@ -1,12 +1,7 @@
 import { el } from "element-plus/es/locales.mjs";
 
 //引入snowflake-id
-import SnowflakeId from 'snowflake-id';
-
-const snowflake = new SnowflakeId({
-    mid: 1, // 机器 ID
-    offset: 1672531200000, // 自定义起始时间戳 (2023-01-01)
-});
+import snowflake from './snowid';
 
 
 class WebSocketService {
@@ -79,12 +74,12 @@ class WebSocketService {
         if (token) {
           message.auth = `Bearer ${token}`;
         }
-  
+
         try {
-          const messageId =snowflake.generate();; // 生成一个唯一的消息 ID
+          const messageId = snowflake.generate();; // 生成一个唯一的消息 ID
           message.id = messageId;
           console.log('发送消息:', message);
-  
+
           // 监听响应
           const handleResponse = (event) => {
             const response = JSON.parse(event.data);
@@ -93,9 +88,9 @@ class WebSocketService {
               callback(response); // 执行回调，传递响应数据
             }
           };
-  
+
           this.socket.addEventListener('message', handleResponse);
-  
+
           this.socket.send(JSON.stringify(message)); // 发送消息
           this.retryCount = 0; // 重置重试计数
         } catch (error) {
@@ -115,11 +110,73 @@ class WebSocketService {
       }
     }
   }
-  
-  
 
 
-  
+  async sendAudioMessage(audioBlob, metaData, callback) {
+    if (!audioBlob) return;
+
+    try {
+        // 1. 将元数据转为 JSON
+        const headerJson = JSON.stringify(metaData);
+
+        // 2. 将 JSON 转为固定长度的 Uint8Array
+        const headerBuffer = new TextEncoder().encode(headerJson);
+
+        // 3. 确保 JSON 消息头长度为 512 字节，不足补零
+        const headerSize = 512; // 固定长度
+        const paddedHeaderBuffer = new Uint8Array(headerSize);
+        paddedHeaderBuffer.set(headerBuffer.slice(0, Math.min(headerBuffer.length, headerSize)));
+
+        // 4. 将音频文件 Blob 转为 ArrayBuffer（异步操作）
+        const fileBuffer = await audioBlob.arrayBuffer();
+
+        // 5. 合并消息头和文件数据
+        const combinedBuffer = new Uint8Array(paddedHeaderBuffer.length + fileBuffer.byteLength);
+        combinedBuffer.set(paddedHeaderBuffer, 0); // 写入消息头
+        combinedBuffer.set(new Uint8Array(fileBuffer), paddedHeaderBuffer.length); // 写入文件数据
+
+        // 6. 通过 WebSocket 发送二进制消息
+        webSocketService.sendBinaryMessage(combinedBuffer, callback, metaData.id);
+    } catch (error) {
+        console.error("语音消息发送失败", error);
+        throw error; // 可以选择处理或抛出错误
+    }
+}
+
+
+
+
+  sendBinaryMessage(buffer, callback, messageId) {
+    if (this.socket && this.socket.readyState === WebSocket.OPEN) {
+      try {
+ 
+
+        // 监听服务器响应
+        const handleResponse = (event) => {
+          const response = JSON.parse(event.data);
+          if (response.id === messageId && callback) {
+            this.socket.removeEventListener('message', handleResponse);
+            callback(response);
+          }
+        };
+
+        this.socket.addEventListener('message', handleResponse);
+
+        // 发送二进制数据
+        this.socket.send(buffer);
+      } catch (error) {
+        console.error("发送二进制消息失败:", error);
+      }
+    } else {
+      console.error("WebSocket 连接不可用，无法发送消息");
+    }
+  }
+
+
+
+
+
+
 
 
 }

@@ -5,7 +5,7 @@ import ElementPlus from 'element-plus';
 import 'element-plus/dist/index.css';
 import store from './store';
 // import stompService from './stomp';
-
+import snowflake from './snowid';
 
 
 
@@ -16,4 +16,7 @@ import store from './store';
 
 
 const app = createApp(App);
+
+app.config.globalProperties.$snowflake = snowflake; // 挂载到全局
+
 app.use(router).use(ElementPlus).use(store).mount('#app');

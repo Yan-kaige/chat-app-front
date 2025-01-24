@@ -59,10 +59,12 @@
       <el-form @submit.prevent="sendMessage" inline class="message-form">
         <el-input v-model="newMessage" placeholder="输入消息......" class="message-input" clearable />
 
-        <el-upload class="upload-demo" :action="`/api/chatroom/sendMediaToRoom/${roomId}`" :auto-upload="true"
-          ref="upload" :on-success="handleSendSuccess">
+   
+        <el-upload class="upload-demo" :auto-upload="false" ref="upload" :on-change="handleFileChange"
+        :http-request="httpIntercept"  @click="currentUploadType = 1">
           <el-button>发送文件</el-button>
         </el-upload>
+
 
         <el-button @mousedown="startRecording(1)" @mouseup="stopRecording" @mouseleave="stopRecording"
           :disabled="isRecording === null">
@@ -124,10 +126,16 @@
       <el-form @submit.prevent="sendPriMessage" inline class="message-form">
 
         <el-input v-model="priNewMessage" placeholder="输入消息......" class="message-input" clearable />
-        <el-upload class="upload-demo" :action="`/api/chatroom/sendMediaToPerson/${roomId}/${receiverId}`"
+        <!-- <el-upload class="upload-demo" :action="`/api/chatroom/sendMediaToPerson/${roomId}/${receiverId}`"
           :auto-upload="true" ref="upload" :on-success="handleSendSuccess">
           <el-button>发送文件</el-button>
+        </el-upload> -->
+
+        <el-upload class="upload-demo" :auto-upload="false" ref="upload" :on-change="handleFileChange"
+        :http-request="httpIntercept"  @click="currentUploadType = 2">
+          <el-button>发送文件</el-button>
         </el-upload>
+
         <el-button @mousedown="startRecording(2)" @mouseup="stopRecording" @mouseleave="stopRecording"
           :disabled="isRecording === null">
           {{ isRecording ? '松开结束录制' : '语音消息长按' }}
@@ -196,7 +204,7 @@ import axios from "../axios";
 // import stompService from '../stomp';
 import webSocketService from "../netty";
 import { ElMessageBox, ElMessage } from 'element-plus'
-import { th } from "element-plus/es/locales.mjs";
+import { id, th } from "element-plus/es/locales.mjs";
 export default {
   data() {
     return {
@@ -224,6 +232,8 @@ export default {
       audioBlob: null,
       isRecording: false,
       stream: null,
+      currentUploadType: null, // 用于存储当前的上传类型 (1 或 2)
+
 
     };
   },
@@ -644,37 +654,39 @@ export default {
     async sendAudioMessage(type) {
       if (!this.audioBlob) return;
 
-      const formData = new FormData();
-      formData.append("file", this.audioBlob, "audio_message.webm");
-
       try {
-
-        if (type == 1) {
-          await axios.post("/api/chatroom/sendMediaToRoom/" + this.roomId, formData, {
-            headers: {
-              "Content-Type": "multipart/form-data",
-            },
-          });
-          await this.fetchChatRoomData(this.roomId); // 刷新数据
-
-        } else {
-          await axios.post("/api/chatroom/sendMediaToPerson/" + this.roomId + "/" + this.receiverId, formData, {
-            headers: {
-              "Content-Type": "multipart/form-data",
-            },
-          });
-          await this.fetchSingleChatRoomData(this.roomId, this.receiverId); // 刷新数据
-        }
+        // 创建消息对象
+        const message = {
+          id: this.$snowflake.generate(), // 消息 ID
+          action: type == 1 ? "message" : "private", // 消息动作
+          roomId: this.roomId,
+          receiverId: type === 2 ? this.receiverId : '', // 如果是私聊，添加接收者 ID
+          fileType: "webm", // 文件类型
+          fileName: "audio.webm", // 文件名
+        };
 
 
+        // 通过 WebSocket 发送消息和音频
+        webSocketService.sendAudioMessage(this.audioBlob, message, (response) => {
+          console.log("语音消息发送成功，服务器响应:", response);
 
+          // 刷新数据
+          if (type === 1) {
+            this.fetchChatRoomData(this.roomId);
+          } else {
+            this.fetchSingleChatRoomData(this.roomId, this.receiverId);
+          }
+        });
+
+        // 清理音频数据
+        this.audioBlob = null;
       } catch (error) {
         console.error("语音消息发送失败", error);
         this.$message.error("语音消息发送失败！");
       }
-
-      this.audioBlob = null;
     },
+
+
     clearAudio() {
       this.audioBlob = null;
     },
@@ -701,6 +713,37 @@ export default {
 
       //清空文件列表
       this.$refs.upload.clearFiles();
+    },
+    async httpIntercept({ file }) {
+      try {
+
+        // const { type } = data; // 获取传递的 type 参数
+
+        // 生成消息头
+        const metaData = {
+          id: this.$snowflake.generate(), 
+          action: this.currentUploadType == 1 ? "message" : "private", // 消息动作
+          roomId: this.roomId,
+          receiverId: this.currentUploadType  === 2 ? this.receiverId : '', // 如果是私聊，添加接收者 ID
+          fileType: file.raw.type.split('/').pop(),  //截取 / 后面的内容
+          fileName: file.name,
+  
+        };
+
+
+        // 通过 WebSocket 发送文件数据
+        webSocketService.sendAudioMessage(file.raw,metaData, (response) => {
+          console.log("文件上传成功，服务器响应:", response);
+          this.fetchChatRoomData(this.roomId);
+          this.$refs.upload.clearFiles();
+        });
+      } catch (error) {
+        console.error("文件上传失败:", error);
+      }
+    },
+    handleFileChange(file, fileList) {
+      this.httpIntercept({ file });
+      console.log("文件选择变化:", file, fileList);
     },
 
   },
