@@ -2,8 +2,9 @@ import { el } from "element-plus/es/locales.mjs";
 
 //引入snowflake-id
 import snowflake from './snowid';
+import router from "./router";
 
-
+import { ElNotification } from 'element-plus';
 class WebSocketService {
   constructor() {
     this.socket = null;
@@ -31,6 +32,40 @@ class WebSocketService {
       this.socket.onmessage = (event) => {
         console.log('接收消息Received message:', event.data);
 
+        const message = JSON.parse(event.data);
+
+        //如果是action=logout
+        if (message.type === 'logout') {
+          ElNotification({
+            title: '通知',
+            message: message.message,
+            type: 'info',
+            duration: 3000,
+          });
+          localStorage.removeItem("token"); // Remove token
+          localStorage.removeItem("chat_cur_user_name");
+          localStorage.removeItem("chat_cur_user_id");
+
+          //跳转到登录页面 
+          router.push('/login');
+
+
+
+          return
+        }
+
+
+        if (message.type === 'notify') {
+          ElNotification({
+            title: '新邀请',
+            message: message.message,
+            type: 'info',
+            duration: 3000,
+          });
+          return;
+
+        }
+
         // 根据 roomId 调用对应的消息处理函数
         if (event.data) {
           this.messageHandlers(event.data);
@@ -50,7 +85,6 @@ class WebSocketService {
 
   subscribeToRoom(roomId, callback) {
     this.messageHandlers = callback; // 存储回调函数
-    console.log('订阅聊天室', roomId);
     this.sendMessage({
       action: 'subscribe',
       roomId,
@@ -59,7 +93,6 @@ class WebSocketService {
 
   unsubscribeFromRoom(roomId) {
     delete this.messageHandlers[roomId];
-    console.log('取消  订阅聊天室', roomId);
     this.sendMessage({
       action: 'unsubscribe',
       roomId,
@@ -116,32 +149,32 @@ class WebSocketService {
     if (!audioBlob) return;
 
     try {
-        // 1. 将元数据转为 JSON
-        const headerJson = JSON.stringify(metaData);
+      // 1. 将元数据转为 JSON
+      const headerJson = JSON.stringify(metaData);
 
-        // 2. 将 JSON 转为固定长度的 Uint8Array
-        const headerBuffer = new TextEncoder().encode(headerJson);
+      // 2. 将 JSON 转为固定长度的 Uint8Array
+      const headerBuffer = new TextEncoder().encode(headerJson);
 
-        // 3. 确保 JSON 消息头长度为 512 字节，不足补零
-        const headerSize = 512; // 固定长度
-        const paddedHeaderBuffer = new Uint8Array(headerSize);
-        paddedHeaderBuffer.set(headerBuffer.slice(0, Math.min(headerBuffer.length, headerSize)));
+      // 3. 确保 JSON 消息头长度为 512 字节，不足补零
+      const headerSize = 512; // 固定长度
+      const paddedHeaderBuffer = new Uint8Array(headerSize);
+      paddedHeaderBuffer.set(headerBuffer.slice(0, Math.min(headerBuffer.length, headerSize)));
 
-        // 4. 将音频文件 Blob 转为 ArrayBuffer（异步操作）
-        const fileBuffer = await audioBlob.arrayBuffer();
+      // 4. 将音频文件 Blob 转为 ArrayBuffer（异步操作）
+      const fileBuffer = await audioBlob.arrayBuffer();
 
-        // 5. 合并消息头和文件数据
-        const combinedBuffer = new Uint8Array(paddedHeaderBuffer.length + fileBuffer.byteLength);
-        combinedBuffer.set(paddedHeaderBuffer, 0); // 写入消息头
-        combinedBuffer.set(new Uint8Array(fileBuffer), paddedHeaderBuffer.length); // 写入文件数据
+      // 5. 合并消息头和文件数据
+      const combinedBuffer = new Uint8Array(paddedHeaderBuffer.length + fileBuffer.byteLength);
+      combinedBuffer.set(paddedHeaderBuffer, 0); // 写入消息头
+      combinedBuffer.set(new Uint8Array(fileBuffer), paddedHeaderBuffer.length); // 写入文件数据
 
-        // 6. 通过 WebSocket 发送二进制消息
-        webSocketService.sendBinaryMessage(combinedBuffer, callback, metaData.id);
+      // 6. 通过 WebSocket 发送二进制消息
+      webSocketService.sendBinaryMessage(combinedBuffer, callback, metaData.id);
     } catch (error) {
-        console.error("语音消息发送失败", error);
-        throw error; // 可以选择处理或抛出错误
+      console.error("语音消息发送失败", error);
+      throw error; // 可以选择处理或抛出错误
     }
-}
+  }
 
 
 
@@ -149,7 +182,7 @@ class WebSocketService {
   sendBinaryMessage(buffer, callback, messageId) {
     if (this.socket && this.socket.readyState === WebSocket.OPEN) {
       try {
- 
+
 
         // 监听服务器响应
         const handleResponse = (event) => {

@@ -1,7 +1,7 @@
 <template>
     <el-container>
         <el-header>
-            <h1 class="header-title">CHAT ROOM</h1>
+            <h1 class="header-title">WEBCHAT</h1>
 
         </el-header>
         <el-main>
@@ -89,8 +89,8 @@
 <script>
 import axios from "../axios";
 import { ca, da, he } from 'element-plus/es/locales.mjs';
-// import stompService from '../stomp';
 import { ElNotification } from 'element-plus';
+
 export default {
     data() {
         return {
@@ -115,6 +115,9 @@ export default {
         // 全局订阅邀请消息示例
         const userId = localStorage.getItem('chat_cur_user_id');
         const token = localStorage.getItem('token');
+
+   
+
         // stompService.client.subscribe(`/topic/invite/${userId}`, (message) => {
         //     ElNotification({
         //         title: '新邀请',
@@ -124,7 +127,7 @@ export default {
         //     });
         // });
 
-        //订阅踢下线消息且跳转到登录页
+        // // 订阅踢下线消息且跳转到登录页
         // stompService.client.subscribe(`/logout/${token}`, (message) => {
         //     ElNotification({
         //         title: '下线通知',

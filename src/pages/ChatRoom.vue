@@ -201,7 +201,6 @@
 
 <script>
 import axios from "../axios";
-// import stompService from '../stomp';
 import webSocketService from "../netty";
 import { ElMessageBox, ElMessage } from 'element-plus'
 import { id, th } from "element-plus/es/locales.mjs";
@@ -212,7 +211,6 @@ export default {
       chatRoomName: "",
       messages: [],
       newMessage: "",
-      stompClient: null, // 保存 STOMP 客户端实例
       currentUser: null,
       drawerVisible: false, // 控制抽屉的显示/隐藏
       onlineUsers: [], // 在线用户列表
@@ -273,11 +271,7 @@ export default {
 
 
     const token = localStorage.getItem('token');
-    webSocketService.sendMessage({ action: 'authenticate', token: `Bearer ${token}` })
-
-
-
-    // webSocketService.initialize('ws://127.0.0.1:8081/ws');
+  
 
     // 订阅当前聊天室
     this.subscribeToRoom(this.roomId);

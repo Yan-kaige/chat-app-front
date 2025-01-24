@@ -87,6 +87,7 @@
 
 <script>
 import axios from "../axios";
+import webSocketService from "../netty";
 
 export default {
   mounted() {
@@ -152,6 +153,7 @@ export default {
             localStorage.setItem("chat_cur_user_id", response.userId);
 
             this.$message.success("登录成功！");
+            webSocketService.sendMessage({ action: 'authenticate', token: `Bearer ${response.token}` })
             this.$router.push("/");
           }
         });
