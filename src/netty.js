@@ -15,6 +15,7 @@ class WebSocketService {
 
   initialize(url) {
     if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
+      const token = localStorage.getItem('token');
       this.socket = new WebSocket(url);
 
       const timeout = setTimeout(() => {
@@ -26,6 +27,12 @@ class WebSocketService {
 
       this.socket.onopen = () => {
         console.log('WebSocket 连接成功 重试次数:', this.retryCount);
+        //发送用户注册请求
+        this.sendMessage({
+          action: 'register',
+          auth: `Bearer ${token}`,
+        });
+
 
       };
 
@@ -197,11 +204,20 @@ class WebSocketService {
 
         // 发送二进制数据
         this.socket.send(buffer);
+        this.retryCount = 0; // 重置重试计数
       } catch (error) {
         console.error("发送二进制消息失败:", error);
       }
     } else {
-      console.error("WebSocket 连接不可用，无法发送消息");
+      //重试
+      if (this.retryCount < 3) {
+        this.retryCount++;
+        console.warn(`WebSocket 连接未打开，尝试重新连接 (${this.retryCount}/3)`);
+        this.initialize('ws://127.0.0.1:8081/ws');
+        setTimeout(() => this.sendBinaryMessage(buffer,callback,messageId), 1000); // 延迟重试
+      } else {
+        console.error('WebSocket 连接失败，重试次数达到上限');
+      }
     }
   }
 

@@ -153,7 +153,7 @@ export default {
             localStorage.setItem("chat_cur_user_id", response.userId);
 
             this.$message.success("登录成功！");
-            webSocketService.sendMessage({ action: 'authenticate', token: `Bearer ${response.token}` })
+            webSocketService.initialize('ws://127.0.0.1:8081/ws');
             this.$router.push("/");
           }
         });

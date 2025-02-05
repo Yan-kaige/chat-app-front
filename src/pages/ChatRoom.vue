@@ -282,7 +282,6 @@ export default {
         this.fetchChatRoomData(roomId); // 刷新数据
         this.fetchSingleChatRoomData(this.roomId, this.receiverId);
         this.scrollToBottom(); // 滚动到底部
-        console.log("收到消息");
       });
     },
     // Fetch chat room data
@@ -430,6 +429,7 @@ export default {
 
     },
     refreshChatRoomData() {
+      console.log("刷新数据");
       this.priNewMessage = ""; // 清空输入框
       this.fetchSingleChatRoomData(this.$route.params.roomId, this.receiverId); // 刷新数据
       this.scrollToBottom(); // 数据加载后滚动到底部
